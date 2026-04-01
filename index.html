@@ -1,0 +1,1234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ZEN TYPE + EDU</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Lora:ital,wght@0,400;1,400&family=Space+Mono&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f5f0e8;
+        --bg2: #ede6d6;
+        --ink: #2c2416;
+        --ink-lt: #7a6a50;
+        --ink-faint: #b8a888;
+        --gold: #c8923a;
+        --moss: #6a8a5a;
+        --dusk: #8a6a9a;
+        --water: #5a8a9a;
+        --cherry: #c85a6a;
+        --cream: #faf6ee;
+        --shadow: rgba(44, 36, 22, 0.12);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Lora", serif;
+        overflow: hidden;
+        user-select: none;
+      }
+
+      /* ── PAPER TEXTURE OVERLAY ── */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* ── HORIZON GRADIENT ── */
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(
+          180deg,
+          rgba(200, 185, 155, 0.18) 0%,
+          transparent 35%,
+          transparent 70%,
+          rgba(160, 140, 110, 0.12) 100%
+        );
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* ── CANVAS (falling words) ── */
+      #world {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      /* ── QUESTION PANEL ── */
+      #question-panel {
+        position: fixed;
+        top: 120px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--cream);
+        border: 2px solid rgba(44, 36, 22, 0.2);
+        border-radius: 12px;
+        padding: 24px 32px;
+        max-width: 420px;
+        width: 90vw;
+        text-align: center;
+        box-shadow: 0 12px 48px var(--shadow);
+        backdrop-filter: blur(8px);
+        opacity: 0;
+        transition: opacity 0.4s ease;
+        z-index: 200; /* Ensure this is higher than #ui and #world */
+        pointer-events: auto; /* Explicitly allow clicking */
+      }
+
+      #question-panel.show {
+        opacity: 1;
+      }
+
+      .question-title {
+        font-family: "Space Mono", monospace;
+        font-size: 0.65rem;
+        letter-spacing: 4px;
+        color: var(--ink-faint);
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+
+      #question-text {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        font-size: 1.4rem;
+        letter-spacing: 1px;
+        color: var(--ink);
+        margin-bottom: 20px;
+        line-height: 1.4;
+      }
+
+      .answer-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .answer-btn {
+        padding: 12px 8px;
+        background: transparent;
+        border: 1px solid rgba(44, 36, 22, 0.15);
+        border-radius: 6px;
+        font-family: "Lora", serif;
+        font-size: 0.95rem;
+        color: var(--ink);
+        cursor: pointer;
+        transition: all 0.25s;
+      }
+
+      .answer-btn:hover {
+        border-color: var(--gold);
+        color: var(--gold);
+        background: rgba(200, 146, 58, 0.1);
+      }
+
+      .answer-btn.correct {
+        background: var(--moss);
+        color: var(--cream);
+        border-color: var(--moss);
+      }
+
+      .answer-btn.wrong {
+        background: var(--cherry);
+        color: var(--cream);
+        border-color: var(--cherry);
+      }
+
+      /* ── UI LAYER ── */
+      #ui {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      /* ── HEADER ── */
+      header {
+        width: 100%;
+        padding: 28px 40px 0;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+      }
+
+      .logo-block {
+        line-height: 1;
+      }
+
+      .logo {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        font-size: 2.2rem;
+        letter-spacing: 8px;
+        color: var(--ink);
+        text-transform: uppercase;
+      }
+
+      .logo em {
+        font-style: italic;
+        color: var(--gold);
+      }
+
+      .logo-sub {
+        font-family: "Space Mono", monospace;
+        font-size: 0.55rem;
+        letter-spacing: 4px;
+        color: var(--ink-faint);
+        text-transform: uppercase;
+        margin-top: 4px;
+      }
+
+      .stats {
+        display: flex;
+        gap: 32px;
+        align-items: flex-start;
+        padding-top: 6px;
+      }
+
+      .stat {
+        text-align: right;
+      }
+
+      .stat-val {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        font-size: 2rem;
+        color: var(--ink);
+        line-height: 1;
+        transition:
+          color 0.3s,
+          transform 0.2s;
+      }
+
+      .stat-val.flash {
+        color: var(--moss);
+        transform: scale(1.15);
+      }
+
+      .stat-lbl {
+        font-family: "Space Mono", monospace;
+        font-size: 0.5rem;
+        letter-spacing: 3px;
+        color: var(--ink-faint);
+        text-transform: uppercase;
+        margin-top: 2px;
+      }
+
+      /* ── DIVIDER ── */
+      .divider {
+        width: calc(100% - 80px);
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--ink-faint),
+          transparent
+        );
+        margin-top: 20px;
+        opacity: 0.4;
+      }
+
+      /* ── INPUT AREA ── */
+      .input-wrap {
+        position: fixed;
+        bottom: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(500px, 90vw);
+      }
+
+      .input-inner {
+        position: relative;
+        background: var(--cream);
+        border: 1px solid rgba(44, 36, 22, 0.15);
+        border-radius: 4px;
+        box-shadow:
+          0 4px 32px var(--shadow),
+          inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        overflow: hidden;
+      }
+
+      .input-inner::before {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(
+          90deg,
+          var(--gold),
+          var(--moss),
+          var(--water)
+        );
+        opacity: 0.5;
+      }
+
+      #typer {
+        width: 100%;
+        padding: 18px 24px;
+        background: transparent;
+        border: none;
+        outline: none;
+        font-family: "Lora", serif;
+        font-size: 1.2rem;
+        color: var(--ink);
+        letter-spacing: 1px;
+        caret-color: var(--gold);
+      }
+
+      #typer::placeholder {
+        color: var(--ink-faint);
+        font-style: italic;
+      }
+
+      .input-hint {
+        text-align: center;
+        margin-top: 10px;
+        font-family: "Space Mono", monospace;
+        font-size: 0.55rem;
+        letter-spacing: 3px;
+        color: var(--ink-faint);
+        text-transform: uppercase;
+      }
+
+      /* ── STREAK PETAL ── */
+      .streak-row {
+        position: fixed;
+        bottom: 130px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .petal {
+        width: 8px;
+        height: 8px;
+        border-radius: 50% 0 50% 0;
+        background: var(--cherry);
+        transform: rotate(45deg) scale(0);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        opacity: 0.7;
+      }
+
+      .petal.lit {
+        transform: rotate(45deg) scale(1);
+      }
+
+      /* ── WORD NODES (DOM) ── */
+      .word-node {
+        position: absolute;
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        font-size: 1.5rem;
+        letter-spacing: 2px;
+        color: var(--ink);
+        white-space: nowrap;
+        transition: color 0.15s;
+        pointer-events: none;
+        will-change: transform, opacity;
+      }
+
+      .word-node .typed-part {
+        color: var(--moss);
+      }
+      .word-node .remaining-part {
+        color: var(--ink);
+      }
+
+      /* ── SPLASH BURST ── */
+      .burst {
+        position: fixed;
+        pointer-events: none;
+        z-index: 50;
+        font-family: "Cormorant Garamond", serif;
+        font-size: 1.1rem;
+        font-style: italic;
+        color: var(--moss);
+        animation: burstFly 0.9s ease-out forwards;
+      }
+
+      @keyframes burstFly {
+        0% {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -120%) scale(0.6);
+        }
+      }
+
+      /* ── MISSED RIPPLE ── */
+      .ripple {
+        position: fixed;
+        pointer-events: none;
+        z-index: 49;
+        border-radius: 50%;
+        border: 1.5px solid var(--cherry);
+        opacity: 0.6;
+        animation: rippleOut 0.7s ease-out forwards;
+      }
+
+      @keyframes rippleOut {
+        0% {
+          width: 10px;
+          height: 10px;
+          opacity: 0.6;
+          margin: -5px 0 0 -5px;
+        }
+        100% {
+          width: 80px;
+          height: 80px;
+          opacity: 0;
+          margin: -40px 0 0 -40px;
+        }
+      }
+
+      /* ── SCREENS ── */
+      .screen {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .screen.hidden {
+        display: none;
+      }
+
+      /* INTRO & OVER screens remain the same */
+
+      #s-intro {
+        background: var(--bg);
+        flex-direction: column;
+        gap: 0;
+        animation: fadeIn 1.2s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .intro-logo {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        font-size: 5rem;
+        letter-spacing: 16px;
+        color: var(--ink);
+        text-align: center;
+        line-height: 1;
+        margin-bottom: 6px;
+      }
+
+      .intro-logo span {
+        color: var(--gold);
+        font-style: italic;
+      }
+
+      .intro-sub {
+        font-family: "Space Mono", monospace;
+        font-size: 0.6rem;
+        letter-spacing: 5px;
+        color: var(--ink-faint);
+        text-align: center;
+        text-transform: uppercase;
+        margin-bottom: 48px;
+      }
+
+      .intro-card {
+        background: var(--cream);
+        border: 1px solid rgba(44, 36, 22, 0.12);
+        border-radius: 6px;
+        padding: 36px 44px;
+        width: min(420px, 90vw);
+        box-shadow: 0 8px 40px var(--shadow);
+        position: relative;
+      }
+
+      .intro-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 40px;
+        right: 40px;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--gold),
+          transparent
+        );
+      }
+
+      .intro-label {
+        font-family: "Space Mono", monospace;
+        font-size: 0.55rem;
+        letter-spacing: 4px;
+        color: var(--ink-faint);
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+
+      .intro-name {
+        width: 100%;
+        padding: 12px 0;
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid rgba(44, 36, 22, 0.2);
+        outline: none;
+        font-family: "Lora", serif;
+        font-size: 1.3rem;
+        color: var(--ink);
+        caret-color: var(--gold);
+        margin-bottom: 28px;
+      }
+
+      .intro-name::placeholder {
+        color: var(--ink-faint);
+        font-style: italic;
+      }
+
+      .mode-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 28px;
+      }
+
+      .mode-btn {
+        padding: 10px 6px;
+        background: transparent;
+        border: 1px solid rgba(44, 36, 22, 0.2);
+        border-radius: 4px;
+        font-family: "Space Mono", monospace;
+        font-size: 0.6rem;
+        letter-spacing: 2px;
+        color: var(--ink-lt);
+        cursor: pointer;
+        text-align: center;
+        text-transform: uppercase;
+        transition: all 0.2s;
+      }
+
+      .mode-btn:hover {
+        border-color: var(--gold);
+        color: var(--gold);
+      }
+      .mode-btn.active {
+        background: var(--gold);
+        border-color: var(--gold);
+        color: var(--cream);
+      }
+
+      .mode-desc {
+        font-family: "Space Mono", monospace;
+        font-size: 0.52rem;
+        letter-spacing: 1px;
+        color: var(--ink-faint);
+        text-align: center;
+        margin-bottom: 28px;
+        min-height: 16px;
+      }
+
+      .btn-begin {
+        width: 100%;
+        padding: 15px;
+        background: var(--ink);
+        color: var(--cream);
+        border: none;
+        border-radius: 4px;
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        font-size: 1.4rem;
+        letter-spacing: 8px;
+        cursor: pointer;
+        transition: all 0.25s;
+      }
+
+      .btn-begin:hover {
+        background: var(--gold);
+        letter-spacing: 10px;
+      }
+
+      #s-over {
+        background: rgba(245, 240, 232, 0.92);
+        backdrop-filter: blur(8px);
+        flex-direction: column;
+      }
+
+      .over-card {
+        background: var(--cream);
+        border: 1px solid rgba(44, 36, 22, 0.12);
+        border-radius: 6px;
+        padding: 44px;
+        width: min(440px, 90vw);
+        box-shadow: 0 8px 40px var(--shadow);
+        text-align: center;
+      }
+
+      .over-greeting {
+        font-family: "Space Mono", monospace;
+        font-size: 0.6rem;
+        letter-spacing: 4px;
+        color: var(--ink-faint);
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+
+      .over-score {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        font-size: 5.5rem;
+        color: var(--ink);
+        line-height: 1;
+        margin-bottom: 2px;
+      }
+
+      .over-wpm {
+        font-family: "Space Mono", monospace;
+        font-size: 0.6rem;
+        letter-spacing: 3px;
+        color: var(--gold);
+        text-transform: uppercase;
+        margin-bottom: 24px;
+      }
+
+      .over-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 28px;
+      }
+
+      .over-stat {
+        border: 1px solid rgba(44, 36, 22, 0.1);
+        border-radius: 4px;
+        padding: 14px 8px;
+      }
+
+      .over-stat-val {
+        font-family: "Cormorant Garamond", serif;
+        font-size: 1.9rem;
+        font-weight: 300;
+        color: var(--ink);
+        line-height: 1;
+      }
+
+      .over-stat-lbl {
+        font-family: "Space Mono", monospace;
+        font-size: 0.5rem;
+        letter-spacing: 2px;
+        color: var(--ink-faint);
+        text-transform: uppercase;
+        margin-top: 4px;
+      }
+
+      .over-msg {
+        font-family: "Lora", serif;
+        font-style: italic;
+        font-size: 1rem;
+        color: var(--ink-lt);
+        margin-bottom: 28px;
+        line-height: 1.6;
+      }
+
+      .btn-again {
+        width: 100%;
+        padding: 14px;
+        background: transparent;
+        border: 1px solid var(--ink);
+        border-radius: 4px;
+        font-family: "Cormorant Garamond", serif;
+        font-size: 1.3rem;
+        letter-spacing: 6px;
+        color: var(--ink);
+        cursor: pointer;
+        transition: all 0.25s;
+      }
+
+      .btn-again:hover {
+        background: var(--ink);
+        color: var(--cream);
+      }
+
+      /* ── FALLING LEAVES BG ── */
+      .leaf {
+        position: fixed;
+        pointer-events: none;
+        z-index: 2;
+        font-size: 1rem;
+        opacity: 0.12;
+        animation: leafDrift linear forwards;
+      }
+
+      @keyframes leafDrift {
+        0% {
+          transform: translateY(-40px) rotate(0deg);
+          opacity: 0.12;
+        }
+        100% {
+          transform: translateY(110vh) rotate(360deg);
+          opacity: 0;
+        }
+      }
+
+      /* ── PAUSE RIPPLE BG ── */
+      #ripple-bg {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+
+      .bg-ring {
+        position: absolute;
+        border-radius: 50%;
+        border: 1px solid rgba(44, 36, 22, 0.06);
+        animation: bgRing 8s ease-out infinite;
+        left: 50%;
+        top: 50%;
+      }
+
+      @keyframes bgRing {
+        0% {
+          width: 0;
+          height: 0;
+          margin: 0 0 0 0;
+          opacity: 0.4;
+        }
+        100% {
+          width: 200vw;
+          height: 200vw;
+          margin: -100vw 0 0 -100vw;
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="ripple-bg"></div>
+    <div id="world"></div>
+
+    <!-- EDUCATIONAL QUESTION PANEL -->
+    <div id="question-panel">
+      <div class="question-title">Quick Lesson</div>
+      <div id="question-text">What is the past tense of "teach"?</div>
+      <div class="answer-grid" id="answer-grid">
+        <button class="answer-btn" data-answer="0">teached</button>
+        <button class="answer-btn" data-answer="1">taught</button>
+        <button class="answer-btn" data-answer="2">teacheded</button>
+        <button class="answer-btn" data-answer="3">teach</button>
+      </div>
+    </div>
+
+    <div id="ui">
+      <header>
+        <div class="logo-block">
+          <div class="logo">Zen <em>Type</em></div>
+          <div class="logo-sub">find your flow</div>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-val" id="stat-score">0</div>
+            <div class="stat-lbl">Score</div>
+          </div>
+          <div class="stat">
+            <div class="stat-val" id="stat-streak">0</div>
+            <div class="stat-lbl">Streak</div>
+          </div>
+          <div class="stat">
+            <div class="stat-val" id="stat-time">—</div>
+            <div class="stat-lbl">Time</div>
+          </div>
+        </div>
+      </header>
+      <div class="divider"></div>
+    </div>
+
+    <div class="streak-row" id="streak-row"></div>
+
+    <div class="input-wrap">
+      <div class="input-inner">
+        <input
+          id="typer"
+          type="text"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+          placeholder="begin typing…"
+          disabled
+        />
+      </div>
+      <div class="input-hint" id="input-hint">
+        type the words as they drift by
+      </div>
+    </div>
+
+    <!-- INTRO SCREEN -->
+    <div class="screen" id="s-intro">
+      <div style="text-align: center; margin-bottom: 0">
+        <div class="intro-logo">Zen <span>Type</span></div>
+        <div class="intro-sub">a gentle word game</div>
+      </div>
+      <div class="intro-card">
+        <div class="intro-label">Your Name</div>
+        <input
+          class="intro-name"
+          id="intro-name"
+          type="text"
+          placeholder="traveller…"
+          maxlength="18"
+        />
+
+        <div class="intro-label">Duration</div>
+        <div class="mode-row" id="mode-row">
+          <button class="mode-btn" data-dur="60">1 min</button>
+          <button class="mode-btn active" data-dur="120">2 min</button>
+          <button class="mode-btn" data-dur="180">3 min</button>
+        </div>
+        <div class="mode-desc" id="mode-desc">
+          gentle pace — find your rhythm
+        </div>
+
+        <button class="btn-begin" id="btn-begin">Begin</button>
+      </div>
+    </div>
+
+    <!-- GAME OVER SCREEN -->
+    <div class="screen hidden" id="s-over">
+      <div class="over-card">
+        <div class="over-greeting" id="over-greeting">well done, traveller</div>
+        <div class="over-score" id="over-score">0</div>
+        <div class="over-wpm" id="over-wpm">0 WPM · 0% accuracy</div>
+        <div class="over-grid">
+          <div class="over-stat">
+            <div class="over-stat-val" id="os-typed">0</div>
+            <div class="over-stat-lbl">Typed</div>
+          </div>
+          <div class="over-stat">
+            <div class="over-stat-val" id="os-missed">0</div>
+            <div class="over-stat-lbl">Missed</div>
+          </div>
+          <div class="over-stat">
+            <div class="over-stat-val" id="os-best">0</div>
+            <div class="over-stat-lbl">Best Streak</div>
+          </div>
+        </div>
+        <div class="over-msg" id="over-msg"></div>
+        <button class="btn-again" onclick="toIntro()">Try Again</button>
+      </div>
+    </div>
+
+    <!-- Rest of HTML same as original -->
+    <script>
+      /* ── WORDS & QUESTIONS ── */
+      // (Keeping your WORDS and EDU_QUESTIONS arrays as they are)
+      const WORDS = [
+        "river",
+        "stone",
+        "petal",
+        "willow",
+        "moon",
+        "mist",
+        "tide",
+        "cedar",
+        "lotus",
+        "ember",
+        "fern",
+        "grove",
+        "rain",
+        "brook",
+        "maple",
+        "wind",
+        "shore",
+        "cloud",
+        "morning",
+        "silence",
+        "water",
+        "amber",
+        "twilight",
+        "dew",
+        "leaf",
+        "bamboo",
+        "candle",
+        "shadow",
+        "bloom",
+        "pine",
+        "heron",
+        "crane",
+        "still",
+        "gentle",
+        "hollow",
+        "meadow",
+        "valley",
+        "birch",
+        "garden",
+        "lantern",
+        "snowfall",
+        "breath",
+        "pause",
+        "drift",
+        "float",
+        "calm",
+        "soft",
+        "slow",
+        "peace",
+        "rest",
+        "echo",
+        "hush",
+        "lull",
+        "serene",
+        "tranquil",
+        "tender",
+        "simple",
+        "open",
+        "wander",
+        "listen",
+        "wonder",
+        "dream",
+        "gather",
+        "settle",
+        "release",
+        "flow",
+        "reflection",
+        "wandering",
+        "blossom",
+        "solitude",
+        "serenity",
+        "patience",
+        "persimmon",
+        "cloudless",
+        "waterfall",
+        "moonlight",
+        "stillness",
+        "lavender",
+        "chrysalis",
+        "porcelain",
+        "gossamer",
+        "earthen",
+        "murmuring",
+        "horizons",
+      ];
+
+      const EDU_QUESTIONS = [
+        {
+          question: "What is the past tense of 'teach'?",
+          answers: ["teached", "taught", "teacheded", "teach"],
+          correct: 1,
+        },
+        {
+          question: "Synonym for 'gentle'?",
+          answers: ["harsh", "soft", "loud", "fast"],
+          correct: 1,
+        },
+        {
+          question: "'Zen' relates to which philosophy?",
+          answers: ["Buddhism", "Christianity", "Islam", "Hinduism"],
+          correct: 0,
+        },
+        {
+          question: "What does 'serene' mean?",
+          answers: ["angry", "calm", "busy", "loud"],
+          correct: 1,
+        },
+        {
+          question: "Plural of 'leaf'?",
+          answers: ["leafs", "leaves", "leafes", "leaf"],
+          correct: 1,
+        },
+      ];
+
+      /* ── AUDIO ── */
+      const AC = new (window.AudioContext || window.webkitAudioContext)();
+      function playSuccess() {
+        const o = AC.createOscillator(),
+          g = AC.createGain();
+        o.connect(g);
+        g.connect(AC.destination);
+        o.frequency.value = 660;
+        g.gain.value = 0.05;
+        o.start();
+        o.stop(AC.currentTime + 0.1);
+      }
+      function playMiss() {
+        const o = AC.createOscillator(),
+          g = AC.createGain();
+        o.connect(g);
+        g.connect(AC.destination);
+        o.frequency.value = 180;
+        g.gain.value = 0.05;
+        o.start();
+        o.stop(AC.currentTime + 0.1);
+      }
+
+      /* ── STATE ── */
+      let G = {
+        active: false,
+        name: "traveller",
+        duration: 120,
+        timeLeft: 120,
+        score: 0,
+        streak: 0,
+        bestStreak: 0,
+        typed: 0,
+        missed: 0,
+        words: [],
+        spawnTimer: null,
+        tickTimer: null,
+        rafId: null,
+        eduIndex: 0,
+        waitingForEdu: false,
+        lastWordLength: 0,
+        shuffledQuestions: [],
+      };
+
+      const typer = document.getElementById("typer");
+
+      /* ── INITIALIZATION ── */
+      // Handle Duration Selection
+      document.querySelectorAll(".mode-btn").forEach((btn) => {
+        btn.onclick = () => {
+          document
+            .querySelectorAll(".mode-btn")
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          G.duration = parseInt(btn.dataset.dur);
+        };
+      });
+
+      document.getElementById("btn-begin").onclick = () => {
+        G.name = document.getElementById("intro-name").value || "traveller";
+        document.getElementById("s-intro").classList.add("hidden");
+        startGame();
+      };
+
+      function startGame() {
+        G.active = true;
+        G.score = 0;
+        G.streak = 0;
+        G.bestStreak = 0;
+        G.typed = 0;
+        G.missed = 0;
+        G.timeLeft = G.duration;
+        G.words = [];
+        G.eduIndex = 0;
+
+        // Shuffle the questions right at the start
+        G.shuffledQuestions = shuffleArray(EDU_QUESTIONS);
+
+        document.getElementById("stat-score").textContent = "0";
+        document.getElementById("stat-streak").textContent = "0";
+
+        typer.disabled = false;
+        typer.value = "";
+        typer.focus();
+
+        G.spawnTimer = setInterval(spawnWord, 2000);
+        G.tickTimer = setInterval(tick, 1000);
+        G.rafId = requestAnimationFrame(update);
+      }
+
+      /* ── GAME ENGINE ── */
+      function update() {
+        if (!G.active) return;
+
+        // Move words
+        for (let i = G.words.length - 1; i >= 0; i--) {
+          let w = G.words[i];
+          if (!G.waitingForEdu) w.y += 0.6; // Speed of falling
+
+          w.el.style.transform = `translateY(${w.y}px)`;
+
+          // Check if word fell off screen
+          if (w.y > window.innerHeight - 150) {
+            G.missed++;
+            G.streak = 0;
+            document.getElementById("stat-streak").textContent = 0;
+            playMiss();
+            w.el.remove();
+            G.words.splice(i, 1);
+          }
+        }
+        G.rafId = requestAnimationFrame(update);
+      }
+
+      function tick() {
+        G.timeLeft--;
+        document.getElementById("stat-time").textContent = G.timeLeft;
+        if (G.timeLeft <= 0) endGame();
+      }
+
+      function spawnWord() {
+        if (!G.active || G.waitingForEdu) return;
+        const word = WORDS[Math.floor(Math.random() * WORDS.length)];
+        const el = document.createElement("div");
+        el.className = "word-node";
+        el.innerHTML = `<span>${word}</span>`;
+        el.style.left = Math.random() * 70 + 5 + "vw";
+        el.style.top = "0px";
+        document.getElementById("world").appendChild(el);
+        G.words.push({ el, word, y: 0, caught: false });
+      }
+
+      /* ── TYPING & LOGIC ── */
+      function onType() {
+        if (!G.active || G.waitingForEdu) return;
+        const val = typer.value.toLowerCase().trim();
+        const index = G.words.findIndex((w) => w.word === val && !w.caught);
+
+        if (index !== -1) {
+          const w = G.words[index];
+          G.lastWordLength = w.word.length;
+          w.caught = true;
+          w.el.remove();
+          G.words.splice(index, 1);
+          typer.value = "";
+          catchWord();
+        }
+      }
+
+      function catchWord() {
+        G.streak++;
+        if (G.streak > G.bestStreak) G.bestStreak = G.streak;
+        G.typed++;
+        playSuccess();
+        showEduQuestion();
+      }
+
+      /* ── SHOW QUESTION ── */
+      function showEduQuestion() {
+        // 1. Safety Check: If we ran out of questions, reshuffle
+        if (!G.shuffledQuestions || G.eduIndex >= G.shuffledQuestions.length) {
+          G.shuffledQuestions = shuffleArray(EDU_QUESTIONS);
+          G.eduIndex = 0;
+        }
+
+        G.waitingForEdu = true;
+        const q = G.shuffledQuestions[G.eduIndex];
+
+        // 2. Update UI text
+        document.getElementById("question-text").textContent = q.question;
+
+        // 3. Setup Buttons
+        const btns = document.querySelectorAll(".answer-btn");
+        btns.forEach((btn, i) => {
+          btn.className = "answer-btn";
+          btn.textContent = q.answers[i] || "";
+          btn.style.display = q.answers[i] ? "block" : "none"; // Hide empty buttons
+
+          btn.onclick = (e) => {
+            e.preventDefault();
+            handleEduAnswer(i, q);
+          };
+        });
+
+        // 4. Show Panel
+        document.getElementById("question-panel").classList.add("show");
+        typer.disabled = true;
+        typer.blur();
+      }
+      /* ── ANSWER ── */
+      function handleEduAnswer(sel, q) {
+        const btns = document.querySelectorAll(".answer-btn");
+        btns.forEach((b) => (b.onclick = null)); // Prevent double-clicks
+
+        const isCorrect = sel === q.correct;
+
+        if (isCorrect) {
+          btns[sel].classList.add("correct");
+          playSuccess();
+          const pts = G.lastWordLength * 10 + G.streak * 5;
+          G.score += pts;
+        } else {
+          btns[sel].classList.add("wrong");
+          btns[q.correct].classList.add("correct");
+          playMiss();
+          G.streak = 0;
+        }
+
+        document.getElementById("stat-score").textContent = G.score;
+        document.getElementById("stat-streak").textContent = G.streak;
+
+        setTimeout(() => {
+          document.getElementById("question-panel").classList.remove("show");
+
+          setTimeout(() => {
+            G.waitingForEdu = false;
+            G.eduIndex++; // Move to the next shuffled question
+            typer.disabled = false;
+            typer.value = "";
+            typer.focus();
+          }, 400);
+        }, 1000);
+      }
+
+      /* ── END GAME ── */
+      function endGame() {
+        G.active = false;
+        clearInterval(G.spawnTimer);
+        clearInterval(G.tickTimer);
+        cancelAnimationFrame(G.rafId);
+
+        document.getElementById("s-over").classList.remove("hidden");
+        document.getElementById("over-score").textContent = G.score;
+        document.getElementById("os-typed").textContent = G.typed;
+        document.getElementById("os-missed").textContent = G.missed;
+        document.getElementById("os-best").textContent = G.bestStreak;
+
+        const wpm = Math.round(G.typed / (G.duration / 60));
+        document.getElementById("over-wpm").textContent =
+          `${wpm} WPM · ${G.name}`;
+      }
+
+      function toIntro() {
+        document.getElementById("s-over").classList.add("hidden");
+        document.getElementById("s-intro").classList.remove("hidden");
+        document.getElementById("world").innerHTML = "";
+      }
+
+      function shuffleArray(array) {
+        let shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+      }
+
+      typer.addEventListener("input", onType);
+    </script>
+  </body>
+</html>
